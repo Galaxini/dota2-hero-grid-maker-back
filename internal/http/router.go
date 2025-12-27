@@ -8,6 +8,7 @@ import (
 
 func NewRouter(h *Handler) http.Handler {
 	r := chi.NewRouter()
+	r.Use(corsMiddleware)
 
 	r.Post("/auth/register", h.handleRegister)
 	r.Post("/auth/login", h.handleLogin)

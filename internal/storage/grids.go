@@ -43,18 +43,36 @@ func (r *GridRepository) GetDefault(ctx context.Context) (*domain.Grid, error) {
 }
 
 func (r *GridRepository) Create(ctx context.Context, userID uuid.UUID, title string, data json.RawMessage) (*domain.Grid, error) {
-	const query = `
+	const deleteQuery = `
+		DELETE FROM grids
+		WHERE user_id = $1
+	`
+	const insertQuery = `
 		INSERT INTO grids (user_id, title, data)
 		VALUES ($1, $2, $3)
 		RETURNING id, created_at
 	`
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, deleteQuery, userID); err != nil {
+		return nil, err
+	}
 
 	g := domain.Grid{
 		Title: title,
 		Data:  data,
 	}
 
-	if err := r.db.QueryRowContext(ctx, query, userID, title, data).Scan(&g.ID, &g.CreatedAt); err != nil {
+	if err := tx.QueryRowContext(ctx, insertQuery, userID, title, data).Scan(&g.ID, &g.CreatedAt); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 
