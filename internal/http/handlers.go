@@ -15,6 +15,7 @@ import (
 	"dota2-hero-grid-maker-back/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type Handler struct {
@@ -60,6 +61,10 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if _, err := h.Users.Create(r.Context(), req.Email, hash); err != nil {
+		if isUniqueViolation(err) {
+			http.Error(w, "email already registered", http.StatusConflict)
+			return
+		}
 		log.Printf("create user error: %v", err)
 		http.Error(w, "failed to register", http.StatusInternalServerError)
 		return
@@ -263,4 +268,12 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(v)
+}
+
+func isUniqueViolation(err error) bool {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return pqErr.Code == "23505"
+	}
+	return false
 }
