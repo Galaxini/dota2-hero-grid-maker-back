@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: dota_pg
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dota_hero_grid
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build: .
+    container_name: dota_api
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/dota_hero_grid?sslmode=disable"
+      SERVER_PORT: "8080"
+    expose:
+      - "8080"
+
+volumes:
+  pg_data:
